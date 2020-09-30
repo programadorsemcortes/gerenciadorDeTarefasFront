@@ -1,25 +1,44 @@
 import { Component, OnInit } from '@angular/core';
 import { FormBuilder, FormGroup, Validators } from '@angular/forms';
-import { Router } from '@angular/router';
+import { ActivatedRoute, Router } from '@angular/router';
 import { Tarefa } from '../../model';
 import { TarefaService } from '../../service';
 
 @Component({
-  selector: 'app-tarefa',
-  templateUrl: './tarefa.component.html',
-  styleUrls: ['./tarefa.component.css'],
+  selector: 'app-tarefa-editar',
+  templateUrl: './tarefa-editar.component.html',
+  styleUrls: ['./tarefa-editar.component.css'],
 })
-export class TarefaComponent implements OnInit {
+export class TarefaEditarComponent implements OnInit {
   tarefas: Tarefa[];
   tarefa = {} as Tarefa;
 
   form: FormGroup;
 
-  constructor(private tarefaService: TarefaService, private fb: FormBuilder, private router: Router) {}
+  idTarefa: string;
+
+  constructor(
+    private route: ActivatedRoute,
+    private tarefaService: TarefaService,
+    private fb: FormBuilder,
+    private router: Router
+  ) {}
 
   ngOnInit(): void {
     this.gerarForm();
+    this.idTarefa = this.route.snapshot.paramMap.get('id_tarefa');
     this.carregaTarefas();
+    this.carregaTarefa(Number(this.idTarefa));
+  }
+
+  carregaTarefa(id: number) {
+    this.tarefaService.tarefa(id).subscribe(
+      (data) => {
+        this.tarefa = data;
+        this.populandoFormulario();
+      },
+      (err) => console.error(err)
+    );
   }
 
   gerarForm() {
@@ -38,29 +57,26 @@ export class TarefaComponent implements OnInit {
     );
   }
 
-  cadastrar() {
+  atualizar() {
     if (this.form.invalid) {
       return;
     }
 
-    this.tarefa = this.form.value;
-    const dataAtual = new Date();
-    this.tarefa.dataCriacao = dataAtual;
-    this.tarefa.dataAtualizacao = dataAtual;
-    this.tarefa.status = 1;
-    this.tarefa.statusRemocao = 0;
+    this.tarefa.dataAtualizacao = new Date();
+    this.tarefa.titulo = this.form.get('titulo').value;
+    this.tarefa.descricao = this.form.get('descricao').value;
 
-    this.tarefaService.insert(this.tarefa).subscribe(
+    this.tarefaService.atualizar(this.tarefa).subscribe(
       (data) => {
         this.carregaTarefas();
-        this.gerarForm();
+        this.router.navigate(['/tarefas']);
       },
       (err) => console.error(err)
     );
   }
 
   editar(id: number) {
-    this.router.navigate(['/tarefas/detalhes/' + id]);
+    this.router.navigate(['/tarefas/detalhes' + id]);
   }
 
   finalizar(id: number) {
@@ -97,5 +113,12 @@ export class TarefaComponent implements OnInit {
       },
       (err) => console.error(err)
     );
+  }
+
+  populandoFormulario() {
+    this.form.patchValue({
+      titulo: this.tarefa.titulo,
+      descricao: this.tarefa.descricao,
+    });
   }
 }
